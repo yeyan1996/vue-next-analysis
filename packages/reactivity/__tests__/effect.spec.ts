@@ -195,14 +195,28 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(2)
   })
 
+  // 只有 effect 包裹的函数执行的时候
+  // 才会给对应响应式变量添加当前 effect
+
+  /**
+   * 当代理一个数组时，触发数组的方法会同时触发方法的 getter 和 length 的 getter
+   * 因为数组的方法需要访问 length
+   * */
   it('should observe iteration', () => {
     let dummy
     const list = reactive(['Hello'])
     effect(() => (dummy = list.join(' ')))
 
     expect(dummy).toBe('Hello')
+    // list.push 会先触发 push 的 getter,length 的 getter
+    // 但是此时没有 effect 所以不会收集任何依赖
+
+    // 然后 push 触发 push 的 setter，下标 2 的 setter，length 的 setter
+    //
     list.push('World!')
     expect(dummy).toBe('Hello World!')
+
+    // list.shift 会触发 shift 的 getter，length 的 getter，下标 0 的 getter
     list.shift()
     expect(dummy).toBe('World!')
   })

@@ -46,6 +46,7 @@ function set(
   receiver: any
 ): boolean {
   value = toRaw(value)
+  // 判断是否
   const hadKey = hasOwn(target, key)
   const oldValue = target[key]
   if (isRef(oldValue) && !isRef(value)) {
@@ -56,14 +57,16 @@ function set(
   const result = Reflect.set(target, key, value, receiver)
   // don't trigger if target is something up in the prototype chain of original
   // 当触发的是原型链上某个属性的 setter（由 Reflect.set 触发）
-  // target 为原型链上的对象，和 receiver 不想等，所以返回 false
+  // target 为原型链上的对象，和 receiver 不相等，所以返回 false
   if (target === toRaw(receiver)) {
     /* istanbul ignore else */
     if (__DEV__) {
       const extraInfo = { oldValue, newValue: value }
       // 防止出现多次赋值（例如数组的 push 会触发元素下标的 set 和 length 的 set）
       // vue 进行了判断，保证只触发一次 trigger
+
       // 当前 key 在原型链上
+      // 或者是一个不存在的属性的赋值
       if (!hadKey) {
         trigger(target, OperationTypes.ADD, key, extraInfo)
       } else if (value !== oldValue) {

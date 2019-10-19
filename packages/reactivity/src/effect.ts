@@ -182,7 +182,7 @@ export function trigger(
 ) {
   // 拿到当前响应式对象下面所有的响应式变量和它保存（对应）的 dep
   // 当 target 是 ref 时，获得的 depsMap 只有一个元素，且键名为空字符串
-  // 拿到当前响应式对象（或者 ref）中所有属性以及各自保存的 deps
+  // 拿到当前响应式对象（或者 ref）中所有属性以及各自保存的 dep
   const depsMap = targetMap.get(target)
   if (depsMap === void 0) {
     // never been tracked
@@ -203,7 +203,7 @@ export function trigger(
       addRunners(
         effects,
         computedRunners,
-        /*触发 trigger 的 key 保存的 dep*/ depsMap.get(key)
+        /**触发 trigger 的 key 对应的 dep 保存的 effect*/ depsMap.get(key)
       )
     }
     // also run for iteration key on ADD | DELETE
