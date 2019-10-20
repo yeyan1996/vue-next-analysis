@@ -201,6 +201,7 @@ describe('reactivity/effect', () => {
   /**
    * 当代理一个数组时，触发数组的方法会同时触发方法的 getter 和 length 的 getter
    * 因为数组的方法需要访问 length
+   * 同时还可能触发对应下标的 getter/setter，以及相邻下标的 has/getter(shift,pop)
    * */
   it('should observe iteration', () => {
     let dummy
@@ -211,12 +212,23 @@ describe('reactivity/effect', () => {
     // list.push 会先触发 push 的 getter,length 的 getter
     // 但是此时没有 effect 所以不会收集任何依赖
 
-    // 然后 push 触发 push 的 setter，下标 2 的 setter，length 的 setter
-    //
+    // 然后触发下标 1 的 setter，length 的 setter
+    // 当触发下标 1 的 setter 时，由于是对不存在的 key 的赋值
+    // 所以会进行判断，如果是数组类型则替换，并触发 length 这个响应式变量保存的 effect
+    // 重新收集依赖，也就是给下标 1 添加当前 effect
+
+    // 当 length 属性触发 setter 时，由于新旧数组相同，则直接 return
     list.push('World!')
     expect(dummy).toBe('Hello World!')
 
-    // list.shift 会触发 shift 的 getter，length 的 getter，下标 0 的 getter
+    /* list.shift 会依次触发
+        shift 的 getter
+        length 的 getter
+        下标 0 的 getter
+        下标 1 的 has
+        下标 1 的 getter
+        下标 0 的 setter
+    */
     list.shift()
     expect(dummy).toBe('World!')
   })
