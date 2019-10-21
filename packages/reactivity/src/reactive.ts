@@ -131,6 +131,11 @@ function createReactiveObject(
     ? collectionHandlers
     : baseHandlers
   // 新建一个响应式对象
+  /**
+   * 这里只对最外层做了代理
+   * 对于值是对象的属性，在 get 时再递归进行代理
+   * 防止循环引用导致卡死
+   * */
   observed = new Proxy(target, handlers)
   // toProxy 保存着 <源对象，Proxy 对象> 的组合 (源 to Proxy)
   toProxy.set(target, observed)

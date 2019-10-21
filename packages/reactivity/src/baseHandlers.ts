@@ -22,6 +22,9 @@ function createGetter(isReadonly: boolean) {
     if (isSymbol(key) && builtInSymbols.has(key)) {
       return res
     }
+    // 如果给 reactive 传入一个值为 ref 的对象 // observed = reactive({a : ref(1)})
+    // 并尝试获取 ref 时，会将 ref 解套并返回原始值 // observed.a = 1
+    // 如果直接给 reactive 传入一个 ref 会原样返回 // reactive(ref(1))
     if (isRef(res)) {
       return res.value
     }
@@ -49,8 +52,12 @@ function set(
   // 判断是否
   const hadKey = hasOwn(target, key)
   const oldValue = target[key]
+  // 如果给一个 ref 赋值一个非 ref 的值，会将原来的 ref.value 赋值为非 ref 的值
+  // observed = reactive({a : ref(1)})
+  // observed.a = 2 // ref.value = 2
   if (isRef(oldValue) && !isRef(value)) {
-    // 对 ref 的赋值操作会触发 trigger
+    // 对 ref 的赋值操作会触发 trigger（ref 已经是响应式的了）
+    // 所以直接返回，否则会触发两次 trigger
     oldValue.value = value
     return true
   }

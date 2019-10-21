@@ -228,7 +228,13 @@ describe('reactivity/effect', () => {
         下标 1 的 has
         下标 1 的 getter
         下标 0 的 setter
+        下标 1 的 delete
+        length 的 setter
     */
+    // 数组的出列相对比较耗费性能
+    // 因为需要让所有下标都向前一位，所有涉及到的元素下标会同时触发 getter 和 setter
+    // 这里还触发了 has（in），确保存在改属性
+    // 同时删除最后一位元素（delete），并修改 length
     list.shift()
     expect(dummy).toBe('World!')
   })

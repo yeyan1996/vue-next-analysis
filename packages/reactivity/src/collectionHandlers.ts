@@ -179,8 +179,11 @@ function createReadonlyMethod(
   }
 }
 
+// 自定义插桩对象
+// 所有对内建对象的访问都会指向插桩对象
 const mutableInstrumentations: any = {
   get(key: any) {
+    // this 指向 target
     return get(this, key, toReactive)
   },
   get size() {
@@ -215,13 +218,17 @@ iteratorMethods.forEach(method => {
   readonlyInstrumentations[method] = createIterableMethod(method, true)
 })
 
+// 创建一个自定义的插桩对象
+// 插桩对象指的是一个含有内建对象 (Map,Set) 所有方法的模拟对象
+// 因为内建对象无法直接进行代理（this 指向会改变，导致一些内部属性没有 e.g this.[[MapData]]）
 function createInstrumentationGetter(instrumentations: any) {
   return function getInstrumented(
     target: any,
     key: string | symbol,
     receiver: any
   ) {
-    // 如果说 key 在 mutableInstrumentations 列表中（）
+    // target 可能是一个内建对象
+    // 如果是内建对象，将它指向插桩对象 instrumentations
     target =
       hasOwn(instrumentations, key) && key in target ? instrumentations : target
     return Reflect.get(target, key, receiver)
