@@ -209,6 +209,9 @@ export function trigger(
     // also run for iteration key on ADD | DELETE
     // 当触发 set 的 key 不存在，或者是对象原型链上的属性，会触发 ADD
     if (type === OperationTypes.ADD || type === OperationTypes.DELETE) {
+      // 如果对数组不存在的下标赋值，会直接触发 length 的 setter
+      // 如果对对象不存在的属性赋值，会直接触发 ITERATE_KEY 的 setter
+      // 当触发对象的 for in 会给 ITERATE_KEY 收集当前 effect
       const iterationKey = Array.isArray(target) ? 'length' : ITERATE_KEY
       addRunners(effects, computedRunners, depsMap.get(iterationKey))
     }

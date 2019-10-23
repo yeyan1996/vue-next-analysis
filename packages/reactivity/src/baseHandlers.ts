@@ -17,8 +17,10 @@ function createGetter(isReadonly: boolean) {
     /**
      * 如果 get 的属性只存在于原型链
      * Reflect.get 会直接访问原型链，并额外先触发一次原型链上对应属性的 getter
+     * 最终会在当前对象和原型链同时收集当前 effect
      * */
     const res = Reflect.get(target, key, receiver)
+    // 内建 Symbol 不会进行依赖收集
     if (isSymbol(key) && builtInSymbols.has(key)) {
       return res
     }
@@ -97,6 +99,7 @@ function deleteProperty(target: any, key: string | symbol): boolean {
   const oldValue = target[key]
   /**在执行完 Reflect 的方法后，对象上就已经没有这个属性了
    * 也就是说，先删除属性在触发 dep
+   * 这样在 effect 执行时对象已没有该属性
    * */
   const result = Reflect.deleteProperty(target, key)
   if (result && hadKey) {
@@ -116,6 +119,9 @@ function has(target: any, key: string | symbol): boolean {
   return result
 }
 
+// 拦截 for in，Object.keys，Object.getOwnPropertyName 等迭代操作
+// for of 不会触发 ownKeys
+// 将枚举类型 OperationTypes.ITERATE 作为 key 添加到当前响应式对象到 depMap 中
 function ownKeys(target: any): (string | number | symbol)[] {
   track(target, OperationTypes.ITERATE)
   return Reflect.ownKeys(target)

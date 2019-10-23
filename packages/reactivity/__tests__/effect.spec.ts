@@ -235,10 +235,14 @@ describe('reactivity/effect', () => {
     // 因为需要让所有下标都向前一位，所有涉及到的元素下标会同时触发 getter 和 setter
     // 这里还触发了 has（in），确保存在改属性
     // 同时删除最后一位元素（delete），并修改 length
+    // set 和 delete 都会触发 effect
     list.shift()
     expect(dummy).toBe('World!')
   })
 
+  // 当执行 join 时会触发 join 的 getter 和 length 的 getter
+  // 当给数组不存在的属性进行赋值时，会直接触发 ITERATE 属性，即 length 的 setter
+  // 重新触发 effect
   it('should observe implicit array length changes', () => {
     let dummy
     const list = reactive(['Hello'])
@@ -251,15 +255,23 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe('Hello World!  Hello!')
   })
 
+  /**如果给数组下标赋值，则不会触发 length 相关的 getter 和 setter*/
   it('should observe sparse array mutations', () => {
     let dummy
     const list = reactive<string[]>([])
+    // 由于没有被 effect 包裹，所以这里触发 setter 不会有任何变化
     list[1] = 'World!'
+    // 将 length 和 join 放入list 的 depMap 中作为键
     effect(() => (dummy = list.join(' ')))
-
     expect(dummy).toBe(' World!')
+    // 0 不存在，所以触发 length 的 setter
     list[0] = 'Hello'
     expect(dummy).toBe('Hello World!')
+    // 依次触发 pop 的 getter
+    // length 的 getter
+    // 1 的 getter
+    // 1 的 delete
+    // length 的 setter
     list.pop()
     expect(dummy).toBe('Hello')
   })
@@ -275,12 +287,17 @@ describe('reactivity/effect', () => {
     })
 
     expect(dummy).toBe(3)
+    // 当给对象添加一个不存在的 key
+    // Vue 会替换为 ITERATE_KEY 的 setter
     numbers.num2 = 4
     expect(dummy).toBe(7)
     delete numbers.num1
     expect(dummy).toBe(4)
   })
 
+  // 第一个 effect 执行时，触发 Symbol key 的 getter ，添加当前 effect
+  // 第二个 effect 执行时，触发 has 给 Symbol key 添加当前 effect
+  // 最终 Symbol key 保存 2 个 effect
   it('should observe symbol keyed properties', () => {
     const key = Symbol('symbol keyed prop')
     let dummy, hasDummy
@@ -297,6 +314,9 @@ describe('reactivity/effect', () => {
     expect(hasDummy).toBe(false)
   })
 
+  // 内建 Symbol 不会进行依赖收集，所以不会收集 effect
+  // 当 dummy 改变后，由于是数组不存在的 key
+  // 所以触发 length 的 setter
   it('should not observe well-known symbol keyed properties', () => {
     const key = Symbol.isConcatSpreadable
     let dummy
@@ -323,6 +343,7 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(newFunc)
   })
 
+  // 赋值相同则不会触发 effect
   it('should not observe set operations without a value change', () => {
     let hasDummy, getDummy
     const obj = reactive({ prop: 'value' })
@@ -341,6 +362,7 @@ describe('reactivity/effect', () => {
     expect(hasDummy).toBe(true)
   })
 
+  // raw 对象没有设置 Proxy，所以没有拦截器不会收集依赖
   it('should not observe raw mutations', () => {
     let dummy
     const obj = reactive<{ prop?: string }>({})
@@ -351,6 +373,7 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe(undefined)
   })
 
+  // raw 对象没有设置 Proxy，所以没有拦截器不会触发 effect
   it('should not be triggered by raw mutations', () => {
     let dummy
     const obj = reactive<{ prop?: string }>({})
