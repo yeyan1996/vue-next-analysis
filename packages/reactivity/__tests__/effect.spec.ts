@@ -395,17 +395,25 @@ describe('reactivity/effect', () => {
         return hiddenValue
       }
     })
+    /** 当给代理对象设置原型时，原对象也会被设置*/
     Object.setPrototypeOf(obj, parent)
     effect(() => (dummy = obj.prop))
     effect(() => (parentDummy = parent.prop))
 
     expect(dummy).toBe(undefined)
     expect(parentDummy).toBe(undefined)
+    // 由于触发 setter 的属性在原型链上，并不会触发 effect
     toRaw(obj).prop = 4
     expect(dummy).toBe(undefined)
     expect(parentDummy).toBe(undefined)
   })
 
+  // counter.num++ 可以理解为 counter.num = counter.num + 1
+  // 所以在 effect 运行时 num 属性会收集 effect
+
+  // 在 effect 包裹的函数执行时，activeReactiveEffectStack 栈顶为当前 effect
+  // vue 会进行判断，如果栈顶的 effect 等于 setter 触发的 effect，则不会重复触发这个 effect
+  // 所以包裹的函数不会被重复执行
   it('should avoid implicit infinite recursive loops with itself', () => {
     const counter = reactive({ num: 0 })
 
@@ -418,6 +426,8 @@ describe('reactivity/effect', () => {
     expect(counterSpy).toHaveBeenCalledTimes(2)
   })
 
+  // 虽然 setter 触发的 effect 不会重复
+  // 但是函数内部主动递归调用仍可以触发
   it('should allow explicitly recursive raw function loops', () => {
     const counter = reactive({ num: 0 })
     const numSpy = jest.fn(() => {
@@ -434,9 +444,10 @@ describe('reactivity/effect', () => {
   it('should avoid infinite loops with other effects', () => {
     const nums = reactive({ num1: 0, num2: 1 })
 
-    const spy1 = jest.fn(() => (nums.num1 = nums.num2))
-    const spy2 = jest.fn(() => (nums.num2 = nums.num1))
+    const spy1 = jest.fn(() => (nums.num1 = nums.num2)) // nums.nums2 保存了 spy1
+    const spy2 = jest.fn(() => (nums.num2 = nums.num1)) // nums.num1 保存了 spy2
     effect(spy1)
+    // 由于赋值前后值没有变所以不会触发 effect
     effect(spy2)
     expect(nums.num1).toBe(1)
     expect(nums.num2).toBe(1)
@@ -454,6 +465,10 @@ describe('reactivity/effect', () => {
     expect(spy2).toHaveBeenCalledTimes(3)
   })
 
+  // effect 执行前包裹的函数叫原函数
+  // effect 执行时包裹的函数叫 effect 函数
+  // 原函数和 effect 函数并不是同一个函数，因为 effect 函数含有一些关于 effect 的额外属性
+  // 并且每次调用 effect 都会创建一个 "effect 函数" 所以并不是内存中的同一个对象
   it('should return a new reactive version of the function', () => {
     function greet() {
       return 'Hello World'
@@ -466,6 +481,7 @@ describe('reactivity/effect', () => {
     expect(effect1).not.toBe(effect2)
   })
 
+  //
   it('should discover new branches while running automatically', () => {
     let dummy
     const obj = reactive({ prop: 'value', run: false })
@@ -473,13 +489,18 @@ describe('reactivity/effect', () => {
     const conditionalSpy = jest.fn(() => {
       dummy = obj.run ? obj.prop : 'other'
     })
+    // run 属性收集了当前 effect
     effect(conditionalSpy)
 
     expect(dummy).toBe('other')
     expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    // prop 属性中并没有 effect函数，所以触发 setter 时 effect 函数也不会运行
     obj.prop = 'Hi'
     expect(dummy).toBe('other')
     expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    // 当 run 为 true 时，会触发 setter，即触发 effect 函数
+    // 此时 prop 属性就会收集当前 effect 函数
+    // 最终 run 和 prop 的 dep 中都会有当前的 effect 函数
     obj.run = true
     expect(dummy).toBe('Hi')
     expect(conditionalSpy).toHaveBeenCalledTimes(2)
@@ -499,12 +520,16 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe('other')
     runner()
     expect(dummy).toBe('other')
+    // 由于 run 不是一个响应式变量，所以即使赋值为 true 也不会触发 effect 函数
     run = true
+    // 手动触发 effect 函数会重新收集依赖
+    // 给 prop 添加当前 effect
     runner()
     expect(dummy).toBe('value')
     obj.prop = 'World'
     expect(dummy).toBe('World')
   })
+
 
   it('should not be triggered by mutating a property, which is used in an inactive branch', () => {
     let dummy

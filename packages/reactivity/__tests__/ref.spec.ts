@@ -90,6 +90,9 @@ describe('reactivity/ref', () => {
     expect(isRef({ value: 0 })).toBe(false)
   })
 
+  // 通过 toRefs 后的对象解构出来的值会保持对原对象的访问
+  // 并且 x,y 会被包裹为 ref
+  // 所以访问 x,y 等于访问 a.x / a.y
   test('toRefs', () => {
     const a = reactive({
       x: 1,

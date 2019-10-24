@@ -39,6 +39,9 @@ export function isRef(v: any): v is Ref {
   return v ? v[refSymbol] === true : false
 }
 
+// 为了防止解构一个 reactive 对象提取基本类型时响应式丢失
+// 通过 toRefs 将 reactive 对象包裹，解构时基本类型时也会被 ref 包裹
+// 原理是即使解构为基本类型，经过 toProxyRef 是其访问的时候经过 reactive 对象
 export function toRefs<T extends object>(
   object: T
 ): { [K in keyof T]: Ref<T[K]> } {
@@ -49,7 +52,7 @@ export function toRefs<T extends object>(
   return ret
 }
 
-// 将某个变量变成 ref
+// 将对象的某个属性值变成 ref
 function toProxyRef<T extends object, K extends keyof T>(
   object: T,
   key: K

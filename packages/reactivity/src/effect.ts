@@ -93,6 +93,8 @@ function run(effect: ReactiveEffect, fn: Function, args: any[]): any {
   if (!effect.active) {
     return fn(...args)
   }
+  // 如果在 activeReactiveEffectStack 中已经包含当前 effect 直接返回
+  // 避免在 effect 包裹的函数中触发 setter 时再次执行 effect 包裹的函数，导致无线循环
   if (activeReactiveEffectStack.indexOf(effect) === -1) {
     cleanup(effect)
     try {
