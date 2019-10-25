@@ -41,10 +41,14 @@ export function computed<T>(
     lazy: true,
     // mark effect as computed so that it gets priority during trigger
     computed: true,
+    // computed effect 函数在依赖项触发 setter 时候不会执行
+    // 取而代之将 computed effect dirty 设置为 true
+    // 直到触发了计算属性的 getter 才会进行求值
     scheduler: () => {
       dirty = true
     }
   })
+  // computed effect 执行后返回一个 computed ref
   return {
     [refSymbol]: true,
     // expose effect so computed can be stopped
@@ -65,8 +69,11 @@ export function computed<T>(
     }
   }
 }
-
+// 如果 effect 执行时收集到了一个 computed ref 时
+// 会给 ref 对应的 computed effect 函数中保存的所有 dep 收集当前 effect
+// 类似 vue2 中 computed watcher 的 depend 方法
 function trackChildRun(childRunner: ReactiveEffect) {
+  // 此时栈顶为当前的 effect
   const parentRunner =
     activeReactiveEffectStack[activeReactiveEffectStack.length - 1]
   if (parentRunner) {

@@ -38,7 +38,7 @@ export interface DebuggerEvent {
 
 export const activeReactiveEffectStack: ReactiveEffect[] = []
 
-export const ITERATE_KEY = Symbol('iterate')
+export const ITERATE_KEY = Symbol('iterate') // 非 Symbol.iterator，自定义的一个遍历标识位
 
 export function isEffect(fn: any): fn is ReactiveEffect {
   return fn != null && fn[effectSymbol] === true
@@ -59,6 +59,7 @@ export function effect<T = any>(
   return effect
 }
 
+// 使一个 effect 停止收集依赖
 export function stop(effect: ReactiveEffect) {
   if (effect.active) {
     cleanup(effect)
@@ -73,7 +74,9 @@ function createReactiveEffect<T = any>(
   fn: () => T,
   options: ReactiveEffectOptions
 ): ReactiveEffect<T> {
-  // effect 基于传入的参数 fn，同时添加了一些额外属性
+  // effect 基于传入的参数 fn，同时添加了一些额外属性并返回 effect 函数
+  // 返回的 effect 函数支持传参，传入的参数即原始函数接收的参数
+  // 并会以 effect 函数的身份运行原始函数（用于 lazy 为 true 的情况）
   const effect = function reactiveEffect(...args: any[]): any {
     return run(effect, fn, args)
   } as ReactiveEffect
@@ -89,6 +92,7 @@ function createReactiveEffect<T = any>(
   return effect
 }
 
+// effect 函数
 function run(effect: ReactiveEffect, fn: Function, args: any[]): any {
   if (!effect.active) {
     return fn(...args)
@@ -96,9 +100,14 @@ function run(effect: ReactiveEffect, fn: Function, args: any[]): any {
   // 如果在 activeReactiveEffectStack 中已经包含当前 effect 直接返回
   // 避免在 effect 包裹的函数中触发 setter 时再次执行 effect 包裹的函数，导致无线循环
   if (activeReactiveEffectStack.indexOf(effect) === -1) {
+    /**
+     * 当执行完 effect 返回 effect 函数
+     * 之后再通过某个 setter 触发了 effect 函数
+     * 会从任何含有当前 effect 的 dep 中删除当前 effect，并准备重新收集
+     * */
     cleanup(effect)
     try {
-      // 将当前 effect 推入栈顶（Vue2 中的全局栈）
+      // 将当前 effect 推入栈顶（activeReactiveEffectStack 为 Vue2 中的全局栈）
       // 以便在执行 fn 的时候给 fn 中的响应式变量收集当前的 effect 作为依赖
       activeReactiveEffectStack.push(effect)
       return fn(...args)
@@ -108,6 +117,7 @@ function run(effect: ReactiveEffect, fn: Function, args: any[]): any {
   }
 }
 
+// 将当前 effect 从所有收集它的 deps 中去除
 function cleanup(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {
@@ -142,6 +152,7 @@ export function track(
   // effect 就是 Vue2 中的 watcher
   const effect = activeReactiveEffectStack[activeReactiveEffectStack.length - 1]
   if (effect) {
+    // 当是一个遍历操作（ownKeys）
     if (type === OperationTypes.ITERATE) {
       key = ITERATE_KEY
     }
@@ -159,7 +170,7 @@ export function track(
     if (!dep.has(effect)) {
       // 往 dep 也就是 Set 集合中添加一个 effect
       dep.add(effect)
-      // effect 中也添加这个 dep，也就是互相引用
+      // 给 effect.deps 数组中添加当前 dep，也就是做到互相引用
       // 因为当清除这个 effect 时，需要在所有用到当前 effect 的 dep 中清楚对它的引用
       effect.deps.push(dep)
       if (__DEV__ && effect.onTrack) {
@@ -209,11 +220,10 @@ export function trigger(
       )
     }
     // also run for iteration key on ADD | DELETE
-    // 当触发 set 的 key 不存在，或者是对象原型链上的属性，会触发 ADD
+    // ADD 和 DELETE 会额外触发 迭代标志位/length 属性中保存的 effect（但由于是 Set 结构所以会自动去重）
     if (type === OperationTypes.ADD || type === OperationTypes.DELETE) {
       // 如果对数组不存在的下标赋值，会直接触发 length 的 setter
-      // 如果对对象不存在的属性赋值，会直接触发 ITERATE_KEY 的 setter
-      // 当触发对象的 for in 会给 ITERATE_KEY 收集当前 effect
+      // 如果对对象不存在的属性赋值，会直接触发 ITERATE_KEY 的 setter（for in 会给对象的 ITERATE_KEY 收集当前 effect）
       const iterationKey = Array.isArray(target) ? 'length' : ITERATE_KEY
       addRunners(effects, computedRunners, depsMap.get(iterationKey))
     }
@@ -225,6 +235,7 @@ export function trigger(
   // Important: computed effects must be run first so that computed getters
   // can be invalidated before any normal effects that depend on them are run.
   // 分别执行 computed effects 和 普通 effects
+  /**由于是 Set 结构，即使推入多个相同的 effect 函数，也会被自动去重，始终只触发一个 */
   computedRunners.forEach(run)
   effects.forEach(run)
 }
@@ -269,6 +280,7 @@ function scheduleRun(
   if (effect.scheduler !== void 0) {
     effect.scheduler(effect)
   } else {
+    // 当 effect 执行时，执行的为 effect 函数，而非原始函数（79）
     effect()
   }
 }

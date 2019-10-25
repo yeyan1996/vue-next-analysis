@@ -74,8 +74,8 @@ function set(
       // 防止出现多次赋值（例如数组的 push 会触发元素下标的 set 和 length 的 set）
       // vue 进行了判断，保证只触发一次 trigger
 
-      // 当前 key 在原型链上
-      // 或者是一个不存在的属性的赋值
+      // 当当前 key 在原型链上
+      // 或者是对一个不存在的属性的赋值
       if (!hadKey) {
         trigger(target, OperationTypes.ADD, key, extraInfo)
       } else if (value !== oldValue) {

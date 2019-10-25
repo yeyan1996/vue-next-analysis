@@ -481,7 +481,6 @@ describe('reactivity/effect', () => {
     expect(effect1).not.toBe(effect2)
   })
 
-  //
   it('should discover new branches while running automatically', () => {
     let dummy
     const obj = reactive({ prop: 'value', run: false })
@@ -530,7 +529,6 @@ describe('reactivity/effect', () => {
     expect(dummy).toBe('World')
   })
 
-
   it('should not be triggered by mutating a property, which is used in an inactive branch', () => {
     let dummy
     const obj = reactive({ prop: 'value', run: true })
@@ -542,14 +540,20 @@ describe('reactivity/effect', () => {
 
     expect(dummy).toBe('value')
     expect(conditionalSpy).toHaveBeenCalledTimes(1)
+    // 此时通过 setter 重新执行 effect 函数时会执行 cleanup
+    /**从任何含有当前 effect 的 dep 中删除当前 effect，并准备重新收集*/
     obj.run = false
     expect(dummy).toBe('other')
     expect(conditionalSpy).toHaveBeenCalledTimes(2)
+    // 由于重新收集依赖时 run 为 false，所以不会给 prop 属性收集当前 effect 函数
     obj.prop = 'value2'
     expect(dummy).toBe('other')
     expect(conditionalSpy).toHaveBeenCalledTimes(2)
   })
 
+  // 在原始函数变为 effect 函数时，会定义 raw 属性保存原来的函数
+  // 当给 effect 再次传入一个 effect 函数，会进行判断（通过 effectSymbol 标识位来判断）
+  // 如果已经是一个 effect 函数则直接返回 raw，即不会多次包裹
   it('should not double wrap if the passed function is a effect', () => {
     const runner = effect(() => {})
     const otherRunner = effect(runner)

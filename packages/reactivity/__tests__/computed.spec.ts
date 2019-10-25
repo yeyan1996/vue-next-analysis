@@ -47,10 +47,14 @@ describe('reactivity/computed', () => {
     expect(getter).toHaveBeenCalledTimes(2)
   })
 
+  // foo 变化 ->触发 runner 的 scheduler 方法将 dirty 变为 true ->
+  // -> 触发 effect -> 触发 cValue.value 的 getter ->  触发 computed effect 函数
   it('should trigger effect', () => {
     const value = reactive<{ foo?: number }>({})
     const cValue = computed(() => value.foo)
     let dummy
+    // 这里触发了 computed ref 的 getter
+    // 间接的给 value.foo 收集当前 effect
     effect(() => {
       dummy = cValue.value
     })
