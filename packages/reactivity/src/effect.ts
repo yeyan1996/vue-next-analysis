@@ -103,7 +103,7 @@ function run(effect: ReactiveEffect, fn: Function, args: any[]): any {
     /**
      * 当执行完 effect 返回 effect 函数
      * 之后再通过某个 setter 触发了 effect 函数
-     * 会从任何含有当前 effect 的 dep 中删除当前 effect，并准备重新收集
+     * 会从任何保存了当前 effect 函数的 dep 中删除当前 effect 函数，并准备重新收集
      * */
     cleanup(effect)
     try {

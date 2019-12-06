@@ -560,11 +560,13 @@ describe('reactivity/effect', () => {
     expect(runner).not.toBe(otherRunner)
     expect(runner.raw).toBe(otherRunner.raw)
   })
-
+    // 由于 key 的 dep 是一个 Set 结构，会自动去重相同的 effect
+    // 所以 prop 赋值只会触发 effect 一次
   it('should not run multiple times for a single mutation', () => {
     let dummy
     const obj = reactive<Record<string, number>>({})
     const fnSpy = jest.fn(() => {
+        // obj 为空对象也会触发 ownKeys 拦截
       for (const key in obj) {
         dummy = obj[key]
       }
@@ -573,6 +575,7 @@ describe('reactivity/effect', () => {
     effect(fnSpy)
 
     expect(fnSpy).toHaveBeenCalledTimes(1)
+      // 不存在的 key 将会触发 ITERATE 属性对应的 dep
     obj.prop = 16
     expect(dummy).toBe(16)
     expect(fnSpy).toHaveBeenCalledTimes(2)
