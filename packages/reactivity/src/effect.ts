@@ -90,7 +90,8 @@ export class ReactiveEffect<T = any> {
         // 因为旧的响应式属性可能已经被删除了
         /**
          * 当 effectStack 长度 < 30 时，使用缓存标记而非重新收集依赖，提升性能
-         * 给收集了当前 effect 的响应式属性做标记，减少对 dep 的 delete 操作
+         * 给收集了当前 effect 的响应式属性做标记，并和新的响应式属性作 diff
+         * 删除多余的响应式属性，缓存现有响应式属性
          * **/
         if (effectTrackDepth <= maxMarkerBits) {
           initDepMarkers(this)

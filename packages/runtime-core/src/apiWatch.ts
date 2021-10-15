@@ -203,6 +203,11 @@ function doWatch(
   let forceTrigger = false
   let isMultiSource = false
 
+  // watch 格式化处理
+  // watch(ref, cb) => watch(() => ref.value, cb)
+  // watch(reactive, cb) => watch(() => reactive, cb)
+  // watch([ref, reactive], cb) => watch(() => [ref.value, reactive], cb)
+  // watch(() => value, cb) => watch(() => value, cb)
   if (isRef(source)) {
     getter = () => source.value
     forceTrigger = !!source._shallow
@@ -302,6 +307,8 @@ function doWatch(
     }
     if (cb) {
       // watch(source, cb)
+      // 每次更新时
+      // 计算新的值重新收集依赖
       const newValue = effect.run()
       if (
         deep ||
@@ -316,6 +323,8 @@ function doWatch(
           isCompatEnabled(DeprecationTypes.WATCH_ARRAY, instance))
       ) {
         // cleanup before running cb again
+        // 执行 before watch 的回调
+        // 用处不大
         if (cleanup) {
           cleanup()
         }
@@ -337,6 +346,7 @@ function doWatch(
   // it is allowed to self-trigger (#1727)
   job.allowRecurse = !!cb
 
+  // 根据配置，在不同时机执行 job
   let scheduler: EffectScheduler
   if (flush === 'sync') {
     scheduler = job as any // the scheduler function gets called directly
@@ -367,14 +377,20 @@ function doWatch(
     if (immediate) {
       job()
     } else {
+      // watch 会立即触发第一个参数
+      // 收集依赖
       oldValue = effect.run()
     }
   } else if (flush === 'post') {
+    // watchEffect
+    // 推迟到组件渲染后
+    // 此时 watch cb 可以访问 DOM
     queuePostRenderEffect(
       effect.run.bind(effect),
       instance && instance.suspense
     )
   } else {
+    // watchEffect
     effect.run()
   }
 

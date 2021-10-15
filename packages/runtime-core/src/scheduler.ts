@@ -155,6 +155,7 @@ export function flushPreFlushCbs(
 ) {
   if (pendingPreFlushCbs.length) {
     currentPreFlushParentJob = parentJob
+    // job  去重
     activePreFlushCbs = [...new Set(pendingPreFlushCbs)]
     pendingPreFlushCbs.length = 0
     if (__DEV__) {
@@ -220,6 +221,7 @@ export function flushPostFlushCbs(seen?: CountMap) {
 const getId = (job: SchedulerJob): number =>
   job.id == null ? Infinity : job.id
 
+// 下个 tick flush job
 function flushJobs(seen?: CountMap) {
   isFlushPending = false
   isFlushing = true
@@ -236,6 +238,8 @@ function flushJobs(seen?: CountMap) {
   //    priority number)
   // 2. If a component is unmounted during a parent component's update,
   //    its update can be skipped.
+  // 对于 render effect
+  // 如果父组件被删除了，则子组件不需要执行 update 了（卸载逻辑父组件会执行）
   queue.sort((a, b) => getId(a) - getId(b))
 
   // conditional usage of checkRecursiveUpdate must be determined out of

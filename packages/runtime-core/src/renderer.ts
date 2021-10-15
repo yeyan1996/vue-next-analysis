@@ -385,6 +385,7 @@ function baseCreateRenderer(
     // 牺牲了一些精度，但是总体获得了更快的性能和更快的速度
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
+      // 销毁节点
       unmount(n1, parentComponent, parentSuspense, true)
       n1 = null
     }
@@ -1337,6 +1338,8 @@ function baseCreateRenderer(
     isSVG,
     optimized
   ) => {
+    // 1. 生成新的虚拟 DOM
+    // 2. diff + patch（DOM 操作）
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
@@ -2307,6 +2310,7 @@ function baseCreateRenderer(
     hostRemove(end)
   }
 
+  // 销毁组件
   const unmountComponent = (
     instance: ComponentInternalInstance,
     parentSuspense: SuspenseBoundary | null,
@@ -2335,6 +2339,7 @@ function baseCreateRenderer(
 
     // update may be null if a component is unmounted before its async
     // setup has resolved.
+    // 销毁 DOM 节点
     if (update) {
       // so that scheduler will no longer invoke it
       update.active = false

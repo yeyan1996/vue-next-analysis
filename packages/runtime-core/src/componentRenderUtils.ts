@@ -90,6 +90,7 @@ export function renderComponentRoot(
       if (__DEV__ && attrs === props) {
         markAttrsAccessed()
       }
+      /** 执行 render 函数生成虚拟 DOM */
       result = normalizeVNode(
         render.length > 1
           ? render(
