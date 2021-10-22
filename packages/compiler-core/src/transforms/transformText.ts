@@ -14,6 +14,7 @@ import { getConstantType } from './hoistStatic'
 
 // Merge adjacent text nodes and expressions into a single expression
 // e.g. <div>abc {{ d }} {{ e }}</div> should have a single expression node as child.
+// 合并多个文本节点
 export const transformText: NodeTransform = (node, context) => {
   if (
     node.type === NodeTypes.ROOT ||
@@ -42,6 +43,7 @@ export const transformText: NodeTransform = (node, context) => {
                   children: [child]
                 }
               }
+              // 合并子节点
               // merge adjacent text node into current
               currentContainer.children.push(` + `, next)
               children.splice(j, 1)

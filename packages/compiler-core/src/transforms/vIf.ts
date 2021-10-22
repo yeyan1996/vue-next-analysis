@@ -46,7 +46,12 @@ export const transformIf = createStructuralDirectiveTransform(
       // #1587: We need to dynamically increment the key based on the current
       // node's sibling nodes, since chained v-if/else branches are
       // rendered at the same depth
+      // 获取 v-if/v-else 的相邻节点
+      // v-if 会找到 v-else/v-else-if
+      // v-else 会找到 v-if/v-else-if
+      // v-else-if 会找到 v-if/v-else
       const siblings = context.parent!.children
+      // 当前 AST 节点在相邻 AST 节点的位置
       let i = siblings.indexOf(ifNode)
       let key = 0
       while (i-- >= 0) {
@@ -59,6 +64,8 @@ export const transformIf = createStructuralDirectiveTransform(
       // Exit callback. Complete the codegenNode when all children have been
       // transformed.
       return () => {
+        // isRoot = v-if
+        // 创建 v-if 的 codegenNode
         if (isRoot) {
           ifNode.codegenNode = createCodegenNodeForBranch(
             branch,
@@ -66,6 +73,7 @@ export const transformIf = createStructuralDirectiveTransform(
             context
           ) as IfConditionalExpression
         } else {
+          // v-else v-else-if
           // attach this branch's codegen node to the v-if root.
           const parentCondition = getParentCondition(ifNode.codegenNode!)
           parentCondition.alternate = createCodegenNodeForBranch(
@@ -111,23 +119,28 @@ export function processIf(
     validateBrowserExpression(dir.exp as SimpleExpressionNode, context)
   }
 
+  // v-if AST 节点转换
   if (dir.name === 'if') {
+    // 创建 v-if branch（和 v-if 不同）的 ast node
     const branch = createIfBranch(node, dir)
     const ifNode: IfNode = {
       type: NodeTypes.IF,
       loc: node.loc,
       branches: [branch]
     }
+    // 使用 v-if 节点替换当前节点
     context.replaceNode(ifNode)
     if (processCodegen) {
       return processCodegen(ifNode, branch, true)
     }
   } else {
+    // v-else | v-else-if
     // locate the adjacent v-if
     const siblings = context.parent!.children
     const comments = []
     let i = siblings.indexOf(node)
     while (i-- >= -1) {
+      // 当前节点前一个节点
       const sibling = siblings[i]
       if (__DEV__ && sibling && sibling.type === NodeTypes.COMMENT) {
         context.removeNode(sibling)
@@ -188,6 +201,8 @@ export function processIf(
           }
         }
 
+        // sibling 为 v-if 节点
+        // 将当前节点转换为 v-else branch 节点，放入 v-if 节点的 branches 中
         sibling.branches.push(branch)
         const onExit = processCodegen && processCodegen(sibling, branch, false)
         // since the branch was removed, it will not be traversed.

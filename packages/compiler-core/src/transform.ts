@@ -317,6 +317,8 @@ export function createTransformContext(
 export function transform(root: RootNode, options: TransformOptions) {
   const context = createTransformContext(root, options)
   traverseNode(root, context)
+  // 遍历整个 AST 节点
+  // 找到静态提升，放入 context.hoists 数组中
   if (options.hoistStatic) {
     hoistStatic(root, context)
   }
@@ -413,7 +415,10 @@ export function traverseNode(
   // apply transform plugins
   const { nodeTransforms } = context
   const exitFns = []
+  // 通过 nodeTransform 工具函数，将 ast 转为 vnode
   for (let i = 0; i < nodeTransforms.length; i++) {
+    // onExit 在处理完当前节点和所有子节点之后执行
+    // 不同工具函数会有不同处理
     const onExit = nodeTransforms[i](node, context)
     if (onExit) {
       if (isArray(onExit)) {
@@ -468,6 +473,11 @@ export function traverseNode(
   }
 }
 
+// 创建结构化指令的转换工具函数
+// 结构化指令，即可以改变 vnode 结构的指令（v-if/v-for）
+// 1. 指令必须匹配 name 正则
+// 2. 必须是元素节点
+// 3. 不能是 template + 作用域插槽（这个会在 vSlot 转换函数中处理）
 export function createStructuralDirectiveTransform(
   name: string | RegExp,
   fn: StructuralDirectiveTransform
@@ -477,6 +487,7 @@ export function createStructuralDirectiveTransform(
     : (n: string) => name.test(n)
 
   return (node, context) => {
+    // 结构化指令只作用域元素节点
     if (node.type === NodeTypes.ELEMENT) {
       const { props } = node
       // structural directive transforms are not concerned with slots

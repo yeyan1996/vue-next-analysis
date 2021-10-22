@@ -77,9 +77,11 @@ const directiveImportMap = new WeakMap<DirectiveNode, symbol>()
 export const transformElement: NodeTransform = (node, context) => {
   // perform the work on exit, after all child expressions have been
   // processed and merged.
+  // postTransformElement 会在子节点处理完成后才执行
   return function postTransformElement() {
     node = context.currentNode!
 
+    // ast 节点必须是组件或者普通元素
     if (
       !(
         node.type === NodeTypes.ELEMENT &&
@@ -176,6 +178,7 @@ export const transformElement: NodeTransform = (node, context) => {
         if (hasDynamicSlots) {
           patchFlag |= PatchFlags.DYNAMIC_SLOTS
         }
+
       } else if (node.children.length === 1 && vnodeTag !== TELEPORT) {
         const child = node.children[0]
         const type = child.type
@@ -192,6 +195,9 @@ export const transformElement: NodeTransform = (node, context) => {
         // pass directly if the only child is a text node
         // (plain / interpolation / expression)
         if (hasDynamicTextChild || type === NodeTypes.TEXT) {
+          // 如果只有一个文本节点
+          // 则直接将文本节点 AST 赋值给 vnodeChildren
+          // e.g <div>123</div>
           vnodeChildren = child as TemplateTextChildNode
         } else {
           vnodeChildren = node.children
@@ -202,6 +208,8 @@ export const transformElement: NodeTransform = (node, context) => {
     }
 
     // patchFlag & dynamicPropNames
+    // patchFlag 包含动态 props || 动态子节点
+    // e.g <div :a="1">{{a}}</div>
     if (patchFlag !== 0) {
       if (__DEV__) {
         if (patchFlag < 0) {
@@ -224,6 +232,7 @@ export const transformElement: NodeTransform = (node, context) => {
       }
     }
 
+    // codegenNode 比 ast 节点多了一些编译优化的属性
     node.codegenNode = createVNodeCall(
       context,
       vnodeTag,

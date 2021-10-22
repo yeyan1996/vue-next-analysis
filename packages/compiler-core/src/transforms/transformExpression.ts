@@ -46,6 +46,7 @@ import { BindingTypes } from '../options'
 const isLiteralWhitelisted = /*#__PURE__*/ makeMap('true,false,null,this')
 
 export const transformExpression: NodeTransform = (node, context) => {
+  // 插值表达式
   if (node.type === NodeTypes.INTERPOLATION) {
     node.content = processExpression(
       node.content as SimpleExpressionNode,

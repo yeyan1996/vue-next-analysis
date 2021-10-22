@@ -93,6 +93,10 @@ export function baseCompile(
     }
   }
 
+  /**
+   * 将 ast 进行优化
+   * 1. 标识 block 区块（dynamicChildren）
+   * */
   transform(
     ast,
     extend({}, options, {
