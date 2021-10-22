@@ -1203,7 +1203,9 @@ function baseCreateRenderer(
         )
       }
     } else {
-      // 更新组件
+      /**
+       * 更新组件
+       * */
       updateComponent(n1, n2, optimized)
     }
   }
@@ -1495,7 +1497,7 @@ function baseCreateRenderer(
 
         if (next) {
           next.el = vnode.el
-          // 更新组件 props
+          /** 更新组件 props */
           updateComponentPreRender(instance, next, optimized)
         } else {
           next = vnode
