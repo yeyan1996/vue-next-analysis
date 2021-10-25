@@ -79,6 +79,12 @@ export function withCtx(
     return fn
   }
 
+  // 以父组件为数据上下文渲染插槽
+  /**
+   * 注意，此时 activeEffect 仍为子组件
+   * 也就是说，当父组件中的插槽更新时，会触发子组件的 render effect
+   * 并不会触发父组件的 render effect（除非它被父组件非插槽形式依赖）
+   *  */
   const renderFnWithContext: ContextualRenderFn = (...args: any[]) => {
     // If a user calls a compiled slot inside a template expression (#1745), it
     // can mess up block tracking, so by default we disable block tracking and
@@ -88,7 +94,9 @@ export function withCtx(
     if (renderFnWithContext._d) {
       setBlockTracking(-1)
     }
+    // 设置父组件的上下文为当前激活的 instance
     const prevInstance = setCurrentRenderingInstance(ctx)
+    // args 为作用域插槽的参数
     const res = fn(...args)
     setCurrentRenderingInstance(prevInstance)
     if (renderFnWithContext._d) {
